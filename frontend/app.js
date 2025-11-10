@@ -315,16 +315,18 @@ function calculateStreak(workouts) {
     });
 
     // Converter datas para apenas a data (sem hora)
+    // Usar apenas a parte YYYY-MM-DD da string ISO
     const uniqueDates = [];
     const dateSet = new Set();
 
     sortedWorkouts.forEach(workout => {
         const date = new Date(workout.date);
-        const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
+        // Extrair apenas YYYY-MM-DD usando o método ISO (UTC)
+        const dateKey = date.toISOString().split('T')[0];
 
         if (!dateSet.has(dateKey)) {
             dateSet.add(dateKey);
-            uniqueDates.push(new Date(dateKey));
+            uniqueDates.push(dateKey); // Armazenar como string
         }
     });
 
@@ -333,30 +335,45 @@ function calculateStreak(workouts) {
         return 0;
     }
 
+    console.log('Datas únicas:', uniqueDates);
+
+    // Converter strings de data para objetos Date em UTC
+    const dateDates = uniqueDates.map(dateStr => {
+        const [year, month, day] = dateStr.split('-');
+        return new Date(year, parseInt(month) - 1, day);
+    });
+
     let streak = 1; // Pelo menos 1 dia
+
+    // Pegar hoje em UTC
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayKey = today.toISOString().split('T')[0];
+    const todayDate = new Date(todayKey.split('-')[0], parseInt(todayKey.split('-')[1]) - 1, parseInt(todayKey.split('-')[2]));
+
+    console.log('Hoje:', todayKey);
+    console.log('Treino mais recente:', uniqueDates[0]);
 
     // Verificar se o treino mais recente foi hoje ou ontem
-    const mostRecentDate = new Date(uniqueDates[0]);
-    mostRecentDate.setHours(0, 0, 0, 0);
+    const mostRecentDate = dateDates[0];
+    const dayDifference = Math.floor((todayDate - mostRecentDate) / (1000 * 60 * 60 * 24));
 
-    const dayDifference = Math.floor((today - mostRecentDate) / (1000 * 60 * 60 * 24));
+    console.log('Diferença de dias:', dayDifference);
 
     // Se o treino mais recente foi há 2 ou mais dias, streak é 0
     if (dayDifference > 1) {
+        console.log('Treino muito antigo, streak zerado');
         return 0;
     }
 
     // Contar dias consecutivos para trás
-    for (let i = 0; i < uniqueDates.length - 1; i++) {
-        const currentDate = new Date(uniqueDates[i]);
-        currentDate.setHours(0, 0, 0, 0);
+    for (let i = 0; i < dateDates.length - 1; i++) {
+        const currentDate = dateDates[i];
+        const nextDate = dateDates[i + 1];
 
-        const nextDate = new Date(uniqueDates[i + 1]);
-        nextDate.setHours(0, 0, 0, 0);
+        // Calcular diferença em dias
+        const daysDiff = Math.round((currentDate - nextDate) / (1000 * 60 * 60 * 24));
 
-        const daysDiff = Math.floor((currentDate - nextDate) / (1000 * 60 * 60 * 24));
+        console.log(`Comparando ${uniqueDates[i]} e ${uniqueDates[i + 1]}: diferença = ${daysDiff} dias`);
 
         // Se a diferença é exatamente 1 dia, continua o streak
         if (daysDiff === 1) {
@@ -367,6 +384,7 @@ function calculateStreak(workouts) {
         }
     }
 
+    console.log('Streak final:', streak);
     return streak;
 }
 
