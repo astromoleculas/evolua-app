@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evolua - Seu Personal Trainer Digital</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="container">
+                <div class="logo">
+                    <h1>Evolua</h1>
+                    <p class="tagline">Seu Personal Trainer Digital</p>
+                </div>
+                <ul class="nav-menu">
+                    <li><a href="#" data-page="dashboard" class="nav-link active">Dashboard</a></li>
+                    <li><a href="#" data-page="profile" class="nav-link">Perfil</a></li>
+                    <li><a href="#" data-page="plans" class="nav-link">Planos</a></li>
+                    <li><a href="#" data-page="workouts" class="nav-link">Treinos</a></li>
+                    <li><a href="#" data-page="progress" class="nav-link">Evolução</a></li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <section id="dashboard-page" class="page active">
+                <div class="container">
+                    <h2>Dashboard</h2>
+
+                    <!-- Welcome Card -->
+                    <div class="card welcome-card">
+                        <h3>Bem-vindo ao Evolua!</h3>
+                        <p id="welcome-message">Comece sua jornada de transformação física</p>
+                        <button id="start-btn" class="btn btn-primary">Começar</button>
+                    </div>
+
+                    <!-- User Stats -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <h4>Pontos</h4>
+                            <p id="points" class="stat-value">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h4>Treinos Completos</h4>
+                            <p id="workouts-count" class="stat-value">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h4>Medalhas</h4>
+                            <p id="medals-count" class="stat-value">0</p>
+                        </div>
+                        <div class="stat-card">
+                            <h4>Streaks</h4>
+                            <p id="streak" class="stat-value">0 dias</p>
+                        </div>
+                    </div>
+
+                    <!-- Recent Workouts -->
+                    <div class="card">
+                        <h3>Últimos Treinos</h3>
+                        <div id="recent-workouts" class="workouts-list">
+                            <p>Nenhum treino registrado</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile Page -->
+            <section id="profile-page" class="page">
+                <div class="container">
+                    <h2>Meu Perfil</h2>
+
+                    <div class="form-card">
+                        <form id="profile-form">
+                            <div class="form-group">
+                                <label for="name">Nome:</label>
+                                <input type="text" id="name" name="name" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="email">Email:</label>
+                                <input type="email" id="email" name="email" required>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="age">Idade:</label>
+                                <input type="number" id="age" name="age" min="18" max="100">
+                            </div>
+
+                            <div class="form-group">
+                                <label for="objective">Objetivo:</label>
+                                <select id="objective" name="objective" required>
+                                    <option value="">Selecione um objetivo</option>
+                                    <option value="ganho_massa">Ganho de Massa</option>
+                                    <option value="perda_peso">Perda de Peso</option>
+                                    <option value="tonificacao">Tonificação</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="level">Nível:</label>
+                                <select id="level" name="level" required>
+                                    <option value="">Selecione seu nível</option>
+                                    <option value="iniciante">Iniciante</option>
+                                    <option value="intermediario">Intermediário</option>
+                                    <option value="avancado">Avançado</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="days-per-week">Dias por Semana:</label>
+                                <select id="days-per-week" name="days_per_week" required>
+                                    <option value="">Selecione</option>
+                                    <option value="3">3 dias</option>
+                                    <option value="4">4 dias</option>
+                                    <option value="5">5 dias</option>
+                                    <option value="6">6 dias</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="location">Local de Treino:</label>
+                                <select id="location" name="training_location" required>
+                                    <option value="">Selecione</option>
+                                    <option value="academia">Academia</option>
+                                    <option value="casa">Casa</option>
+                                    <option value="parque">Parque</option>
+                                </select>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary">Salvar Perfil</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Plans Page -->
+            <section id="plans-page" class="page">
+                <div class="container">
+                    <h2>Meus Planos de Treino</h2>
+
+                    <button id="create-plan-btn" class="btn btn-primary">Criar Novo Plano</button>
+
+                    <div id="plans-list" class="plans-grid">
+                        <p>Nenhum plano criado. Comece criando seu primeiro plano!</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Workouts Page -->
+            <section id="workouts-page" class="page">
+                <div class="container">
+                    <h2>Meus Treinos</h2>
+
+                    <button id="log-workout-btn" class="btn btn-primary">Registrar Treino</button>
+
+                    <div id="workouts-list" class="workouts-grid">
+                        <p>Nenhum treino registrado</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Progress Page -->
+            <section id="progress-page" class="page">
+                <div class="container">
+                    <h2>Acompanhamento de Evolução</h2>
+
+                    <button id="log-progress-btn" class="btn btn-primary">Registrar Progresso</button>
+
+                    <div class="stats-container">
+                        <div class="card">
+                            <h3>Gráfico de Peso</h3>
+                            <canvas id="weight-chart"></canvas>
+                        </div>
+
+                        <div class="card">
+                            <h3>Gráfico de Treinos</h3>
+                            <canvas id="workouts-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <div id="progress-gallery" class="photo-gallery">
+                        <p>Nenhuma foto de progresso registrada</p>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Modals -->
+        <!-- Login/Register Modal -->
+        <div id="auth-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Entrar ou Registrar</h2>
+                <form id="auth-form">
+                    <div class="form-group">
+                        <label for="auth-name">Nome:</label>
+                        <input type="text" id="auth-name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="auth-email">Email:</label>
+                        <input type="email" id="auth-email" name="email" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="auth-password">Senha:</label>
+                        <input type="password" id="auth-password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Entrar / Registrar</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Workout Modal -->
+        <div id="workout-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Registrar Treino</h2>
+                <form id="workout-form">
+                    <div class="form-group">
+                        <label for="workout-duration">Duração (minutos):</label>
+                        <input type="number" id="workout-duration" name="duration_minutes" min="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="workout-weight">Peso Total (kg):</label>
+                        <input type="number" id="workout-weight" name="total_weight" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="workout-calories">Calorias Queimadas:</label>
+                        <input type="number" id="workout-calories" name="calories_burned" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="workout-notes">Notas:</label>
+                        <textarea id="workout-notes" name="notes" rows="4"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Registrar Treino</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Progress Modal -->
+        <div id="progress-modal" class="modal">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Registrar Progresso</h2>
+                <form id="progress-form">
+                    <div class="form-group">
+                        <label for="progress-weight">Peso (kg):</label>
+                        <input type="number" id="progress-weight" name="weight" step="0.1" min="0" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="progress-photo">Foto:</label>
+                        <input type="text" id="progress-photo" name="photo_url" placeholder="URL da foto">
+                    </div>
+                    <div class="form-group">
+                        <label for="progress-notes">Notas:</label>
+                        <textarea id="progress-notes" name="notes" rows="4"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Registrar Progresso</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="api.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
