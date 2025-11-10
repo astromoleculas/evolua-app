@@ -239,6 +239,19 @@ def get_user_plans(user_id):
         'weeks_count': len(p.weeks)
     } for p in plans]), 200
 
+@app.route('/api/plans/<int:plan_id>', methods=['DELETE'])
+def delete_plan(plan_id):
+    """Delete a training plan"""
+    plan = Plan.query.get(plan_id)
+
+    if not plan:
+        return jsonify({'error': 'Plan not found'}), 404
+
+    db.session.delete(plan)
+    db.session.commit()
+
+    return jsonify({'message': 'Plan deleted successfully'}), 200
+
 # ==================== WORKOUT ROUTES ====================
 
 @app.route('/api/workouts', methods=['POST'])

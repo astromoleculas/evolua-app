@@ -282,7 +282,10 @@ async function loadPlansData() {
                             Criado em ${new Date(p.created_at).toLocaleDateString('pt-BR')}
                         </p>
                     </div>
-                    <button class="btn btn-secondary" onclick="viewPlanDetails(${p.id})">Ver Detalhes</button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-secondary" onclick="viewPlanDetails(${p.id})">Ver Detalhes</button>
+                        <button class="btn btn-danger" onclick="deletePlanConfirm(${p.id}, '${p.name}')">Deletar</button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -299,6 +302,22 @@ async function viewPlanDetails(planId) {
         alert(`Plano: ${plan.name}\n\nSemanas: ${plan.weeks.length}\nExercícios estruturados por semana`);
     } catch (error) {
         alert('Erro ao carregar detalhes: ' + error.message);
+    }
+}
+
+function deletePlanConfirm(planId, planName) {
+    if (confirm(`Tem certeza que deseja deletar o plano "${planName}"? Esta ação não pode ser desfeita.`)) {
+        deletePlan(planId);
+    }
+}
+
+async function deletePlan(planId) {
+    try {
+        await api.deletePlan(planId);
+        alert('Plano deletado com sucesso!');
+        loadPlansData();
+    } catch (error) {
+        alert('Erro ao deletar plano: ' + error.message);
     }
 }
 

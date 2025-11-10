@@ -80,6 +80,12 @@ class EvoluaAPI {
         return this.request(`/plans/user/${userId}`);
     }
 
+    async deletePlan(planId) {
+        return this.request(`/plans/${planId}`, {
+            method: 'DELETE',
+        });
+    }
+
     // Workout endpoints
     async createWorkout(workoutData) {
         return this.request('/workouts', {
