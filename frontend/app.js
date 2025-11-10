@@ -445,6 +445,9 @@ async function loadProgressData() {
                 </div>
             `).join('');
         }
+
+        // Criar gráficos
+        await updateAllCharts(appState.userId);
     } catch (error) {
         console.error('Error loading progress:', error);
     }

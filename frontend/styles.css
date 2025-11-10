@@ -348,6 +348,23 @@ h2 {
     color: var(--warning-color);
 }
 
+/* Charts */
+.stats-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.stats-container .card {
+    display: flex;
+    flex-direction: column;
+}
+
+.stats-container canvas {
+    max-height: 300px;
+}
+
 /* Gallery */
 .photo-gallery {
     display: grid;
@@ -472,6 +489,14 @@ h2 {
 
     .modal-content {
         width: 95%;
+    }
+
+    .stats-container {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-container canvas {
+        max-height: 250px;
     }
 }
 
