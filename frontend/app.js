@@ -665,13 +665,10 @@ function renderSavedUsers() {
 
 async function quickLogin(email, password, name) {
     try {
-        console.log('Tentando login com email:', email);
-
-        // Tentar fazer login com um usuário existente
+        // Sempre tenta fazer login com um usuário existente primeiro
         const user = await api.loginUser(email);
 
-        console.log('Usuário encontrado:', user);
-
+        // Se chegou aqui, usuário foi encontrado
         appState.currentUser = user;
         appState.userId = user.id;
 
@@ -683,33 +680,30 @@ async function quickLogin(email, password, name) {
         loadUserData();
         showDashboard();
     } catch (error) {
-        console.log('Erro ao fazer login:', error.message);
+        // Usuário não existe, tentar criar
+        if (error.message.includes('User not found')) {
+            try {
+                const newUser = await api.createUser({
+                    name: name,
+                    email: email,
+                    password: password,
+                });
 
-        // Se o usuário não existe, criar uma nova conta
-        try {
-            console.log('Criando nova conta para:', email);
+                appState.currentUser = newUser;
+                appState.userId = newUser.id;
 
-            const newUser = await api.createUser({
-                name: name,
-                email: email,
-                password: password,
-            });
+                localStorage.setItem('userId', newUser.id);
+                localStorage.setItem('userName', newUser.name);
 
-            console.log('Nova conta criada:', newUser);
-
-            appState.currentUser = newUser;
-            appState.userId = newUser.id;
-
-            localStorage.setItem('userId', newUser.id);
-            localStorage.setItem('userName', newUser.name);
-
-            closeModal(document.getElementById('auth-modal'));
-            updateUserName();
-            loadUserData();
-            showDashboard();
-        } catch (createError) {
-            console.error('Erro ao criar conta:', createError);
-            alert('Erro ao fazer login: ' + createError.message);
+                closeModal(document.getElementById('auth-modal'));
+                updateUserName();
+                loadUserData();
+                showDashboard();
+            } catch (createError) {
+                alert('Erro ao criar conta: ' + createError.message);
+            }
+        } else {
+            alert('Erro ao fazer login: ' + error.message);
         }
     }
 }
