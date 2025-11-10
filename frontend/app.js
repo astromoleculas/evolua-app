@@ -665,8 +665,12 @@ function renderSavedUsers() {
 
 async function quickLogin(email, password, name) {
     try {
+        console.log('Tentando login com email:', email);
+
         // Tentar fazer login com um usuário existente
         const user = await api.loginUser(email);
+
+        console.log('Usuário encontrado:', user);
 
         appState.currentUser = user;
         appState.userId = user.id;
@@ -679,13 +683,19 @@ async function quickLogin(email, password, name) {
         loadUserData();
         showDashboard();
     } catch (error) {
+        console.log('Erro ao fazer login:', error.message);
+
         // Se o usuário não existe, criar uma nova conta
         try {
+            console.log('Criando nova conta para:', email);
+
             const newUser = await api.createUser({
                 name: name,
                 email: email,
                 password: password,
             });
+
+            console.log('Nova conta criada:', newUser);
 
             appState.currentUser = newUser;
             appState.userId = newUser.id;
@@ -698,6 +708,7 @@ async function quickLogin(email, password, name) {
             loadUserData();
             showDashboard();
         } catch (createError) {
+            console.error('Erro ao criar conta:', createError);
             alert('Erro ao fazer login: ' + createError.message);
         }
     }
