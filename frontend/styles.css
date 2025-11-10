@@ -431,6 +431,76 @@ h2 {
     margin-bottom: 1.5rem;
 }
 
+.modal-content.modal-auth {
+    max-width: 500px;
+}
+
+.auth-tab {
+    display: none;
+}
+
+.auth-tab.active {
+    display: block;
+}
+
+.auth-subtitle {
+    color: var(--text-light);
+    font-size: 0.95rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.saved-users-list {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.user-option {
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.user-option:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.user-option h4 {
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+    color: white;
+}
+
+.user-option-details {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.user-option-details span {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.user-option-badge {
+    font-size: 0.75rem;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+    width: fit-content;
+}
+
 .close {
     position: absolute;
     right: 1rem;

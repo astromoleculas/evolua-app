@@ -197,24 +197,45 @@
         <!-- Modals -->
         <!-- Login/Register Modal -->
         <div id="auth-modal" class="modal">
-            <div class="modal-content">
+            <div class="modal-content modal-auth">
                 <span class="close">&times;</span>
-                <h2>Entrar ou Registrar</h2>
-                <form id="auth-form">
-                    <div class="form-group">
-                        <label for="auth-name">Nome:</label>
-                        <input type="text" id="auth-name" name="name" required>
+
+                <!-- Aba de usuários salvos -->
+                <div id="saved-users-tab" class="auth-tab active">
+                    <h2>Entrar</h2>
+                    <p class="auth-subtitle">Selecione um usuário de teste ou crie uma nova conta</p>
+
+                    <div id="saved-users-list" class="saved-users-list">
+                        <!-- Será preenchido dinamicamente com JS -->
                     </div>
-                    <div class="form-group">
-                        <label for="auth-email">Email:</label>
-                        <input type="email" id="auth-email" name="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="auth-password">Senha:</label>
-                        <input type="password" id="auth-password" name="password" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Entrar / Registrar</button>
-                </form>
+
+                    <button type="button" id="new-user-btn" class="btn btn-secondary" style="width: 100%; margin-top: 1rem;">
+                        + Criar Nova Conta
+                    </button>
+                </div>
+
+                <!-- Aba de novo usuário -->
+                <div id="new-user-tab" class="auth-tab">
+                    <h2>Criar Nova Conta</h2>
+                    <form id="auth-form">
+                        <div class="form-group">
+                            <label for="auth-name">Nome:</label>
+                            <input type="text" id="auth-name" name="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="auth-email">Email:</label>
+                            <input type="email" id="auth-email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="auth-password">Senha:</label>
+                            <input type="password" id="auth-password" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Criar Conta</button>
+                        <button type="button" id="back-btn" class="btn btn-secondary" style="width: 100%; margin-top: 0.5rem;">
+                            Voltar
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
 

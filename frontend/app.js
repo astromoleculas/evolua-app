@@ -4,6 +4,34 @@ let appState = {
     userId: localStorage.getItem('userId') || null,
 };
 
+// Usuários salvos para teste rápido
+const SAVED_USERS = [
+    {
+        name: 'Carlos Mendes',
+        email: 'carlos@example.com',
+        password: 'senha123',
+        objective: 'ganho_massa',
+        level: 'iniciante',
+        days: 3
+    },
+    {
+        name: 'Juliana Lima',
+        email: 'juliana@example.com',
+        password: 'senha456',
+        objective: 'perda_peso',
+        level: 'intermediario',
+        days: 4
+    },
+    {
+        name: 'João Silva',
+        email: 'joao@example.com',
+        password: 'senha789',
+        objective: 'tonificacao',
+        level: 'intermediario',
+        days: 5
+    }
+];
+
 // DOM Elements
 const app = document.getElementById('app');
 const pages = document.querySelectorAll('.page');
@@ -45,6 +73,23 @@ function setupEventListeners() {
     if (authForm) {
         authForm.addEventListener('submit', handleAuth);
     }
+
+    // Usuários salvos
+    const newUserBtn = document.getElementById('new-user-btn');
+    if (newUserBtn) {
+        newUserBtn.addEventListener('click', () => switchAuthTab('new-user'));
+    }
+
+    const backBtn = document.getElementById('back-btn');
+    if (backBtn) {
+        backBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchAuthTab('saved-users');
+        });
+    }
+
+    // Renderizar usuários salvos
+    renderSavedUsers();
 
     // Profile form
     const profileForm = document.getElementById('profile-form');
@@ -584,5 +629,59 @@ function showAuthModal() {
     const modal = document.getElementById('auth-modal');
     if (modal) {
         modal.classList.add('active');
+        switchAuthTab('saved-users');
+    }
+}
+
+function switchAuthTab(tabName) {
+    const savedUsersTab = document.getElementById('saved-users-tab');
+    const newUserTab = document.getElementById('new-user-tab');
+
+    if (tabName === 'saved-users') {
+        savedUsersTab.classList.add('active');
+        newUserTab.classList.remove('active');
+    } else if (tabName === 'new-user') {
+        savedUsersTab.classList.remove('active');
+        newUserTab.classList.add('active');
+    }
+}
+
+function renderSavedUsers() {
+    const usersList = document.getElementById('saved-users-list');
+    if (!usersList) return;
+
+    usersList.innerHTML = SAVED_USERS.map(user => `
+        <div class="user-option" onclick="quickLogin('${user.email}', '${user.password}', '${user.name}')">
+            <h4>${user.name}</h4>
+            <div class="user-option-details">
+                <span>📧 ${user.email}</span>
+                <span>🎯 ${user.objective === 'ganho_massa' ? 'Ganho de Massa' : user.objective === 'perda_peso' ? 'Perda de Peso' : 'Tonificação'}</span>
+                <span>📊 ${user.level === 'iniciante' ? 'Iniciante' : user.level === 'intermediario' ? 'Intermediário' : 'Avançado'}</span>
+                <span>📅 ${user.days} dias/semana</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function quickLogin(email, password, name) {
+    try {
+        const user = await api.createUser({
+            name: name,
+            email: email,
+            password: password,
+        });
+
+        appState.currentUser = user;
+        appState.userId = user.id;
+
+        localStorage.setItem('userId', user.id);
+        localStorage.setItem('userName', user.name);
+
+        closeModal(document.getElementById('auth-modal'));
+        updateUserName();
+        loadUserData();
+        showDashboard();
+    } catch (error) {
+        alert('Erro ao fazer login: ' + error.message);
     }
 }
