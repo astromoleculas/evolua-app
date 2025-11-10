@@ -42,6 +42,10 @@ class EvoluaAPI {
         });
     }
 
+    async loginUser(email) {
+        return this.request(`/users/email/${email}`);
+    }
+
     // Exercise endpoints
     async getExercises(filters = {}) {
         let url = '/exercises';

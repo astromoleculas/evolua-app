@@ -665,11 +665,8 @@ function renderSavedUsers() {
 
 async function quickLogin(email, password, name) {
     try {
-        const user = await api.createUser({
-            name: name,
-            email: email,
-            password: password,
-        });
+        // Tentar fazer login com um usuário existente
+        const user = await api.loginUser(email);
 
         appState.currentUser = user;
         appState.userId = user.id;
@@ -682,6 +679,26 @@ async function quickLogin(email, password, name) {
         loadUserData();
         showDashboard();
     } catch (error) {
-        alert('Erro ao fazer login: ' + error.message);
+        // Se o usuário não existe, criar uma nova conta
+        try {
+            const newUser = await api.createUser({
+                name: name,
+                email: email,
+                password: password,
+            });
+
+            appState.currentUser = newUser;
+            appState.userId = newUser.id;
+
+            localStorage.setItem('userId', newUser.id);
+            localStorage.setItem('userName', newUser.name);
+
+            closeModal(document.getElementById('auth-modal'));
+            updateUserName();
+            loadUserData();
+            showDashboard();
+        } catch (createError) {
+            alert('Erro ao fazer login: ' + createError.message);
+        }
     }
 }

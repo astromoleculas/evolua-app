@@ -94,6 +94,27 @@ def update_user(user_id):
 
     return jsonify({'message': 'User updated successfully'}), 200
 
+@app.route('/api/users/email/<email>', methods=['GET'])
+def get_user_by_email(email):
+    """Get user by email - for login"""
+    user = User.query.filter_by(email=email).first()
+
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    return jsonify({
+        'id': user.id,
+        'name': user.name,
+        'email': user.email,
+        'age': user.age,
+        'objective': user.objective,
+        'level': user.level,
+        'days_per_week': user.days_per_week,
+        'training_location': user.training_location,
+        'points': user.points,
+        'created_at': user.created_at.isoformat()
+    }), 200
+
 # ==================== EXERCISE ROUTES ====================
 
 @app.route('/api/exercises', methods=['GET'])
