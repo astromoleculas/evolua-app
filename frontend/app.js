@@ -36,6 +36,10 @@ class EvoluaApp {
         try {
             const profile = await api.getProfile();
             this.currentUser = profile;
+            // Carregar dados do dashboard após carregar perfil
+            if (this.currentPage === 'dashboard') {
+                this.loadDashboard();
+            }
         } catch (error) {
             console.error('Erro ao carregar perfil:', error);
             this.logout();
@@ -239,7 +243,7 @@ class EvoluaApp {
                     <div class="progress-input">
                         <h3>Registrar Progresso</h3>
                         <form id="progress-form">
-                            <input type="number" id="weight-input" placeholder="Peso (kg)" step="0.1">
+                            <input type="number" id="weight-input" placeholder="Peso (kg)" step="0.01">
                             <textarea id="progress-notes" placeholder="Notas (opcional)"></textarea>
                             <button type="submit" class="btn btn-primary btn-full">Registrar Progresso</button>
                         </form>
@@ -396,22 +400,26 @@ class EvoluaApp {
         document.getElementById('back-from-progress')?.addEventListener('click', () => {
             this.currentPage = 'dashboard';
             this.render();
+            this.loadDashboard();
         });
 
         document.getElementById('back-from-medals')?.addEventListener('click', () => {
             this.currentPage = 'dashboard';
             this.render();
+            this.loadDashboard();
         });
 
         document.getElementById('back-from-profile')?.addEventListener('click', () => {
             this.currentPage = 'dashboard';
             this.render();
+            this.loadDashboard();
         });
 
         document.getElementById('back-from-workout')?.addEventListener('click', () => {
             this.currentPage = 'dashboard';
             this.stopWorkoutTimer();
             this.render();
+            this.loadDashboard();
         });
 
         // Finish workout button
@@ -467,13 +475,24 @@ class EvoluaApp {
         const weight = parseFloat(document.getElementById('weight-input').value);
         const notes = document.getElementById('progress-notes').value;
 
+        if (!weight || isNaN(weight)) {
+            alert('Por favor, insira um peso válido');
+            return;
+        }
+
         try {
-            await api.logProgress(weight, {}, null, notes);
-            alert('Progresso registrado com sucesso!');
+            const response = await api.logProgress(weight, {}, null, notes);
+            
+            if (response.updated) {
+                alert('✅ Progresso do dia já foi atualizado com sucesso!\nNota: Apenas um registro de peso por dia é permitido.');
+            } else {
+                alert('✅ Progresso registrado com sucesso!');
+            }
+            
             document.getElementById('progress-form').reset();
             this.loadProgress();
         } catch (error) {
-            alert('Erro ao registrar progresso: ' + error.message);
+            alert('❌ Erro ao registrar progresso: ' + error.message);
         }
     }
 
@@ -587,23 +606,94 @@ class EvoluaApp {
             const history = await api.getProgressHistory();
             const container = document.getElementById('history-container');
             
-            if (history.length === 0) {
+            // Ordenar por data crescente (do passado para hoje)
+            const sortedHistory = [...history].sort((a, b) => new Date(a.date) - new Date(b.date));
+            
+            if (sortedHistory.length === 0) {
                 container.innerHTML = '<p>Nenhum registro de progresso ainda.</p>';
             } else {
-                container.innerHTML = history.map(h => `
-                    <div class="progress-record">
-                        <div class="record-date">${new Date(h.date).toLocaleDateString('pt-BR')}</div>
-                        <div class="record-weight">${h.weight} kg</div>
-                        ${h.notes ? `<div class="record-notes">${h.notes}</div>` : ''}
+                container.innerHTML = sortedHistory.map(h => `
+                    <div class="progress-record" data-progress-id="${h.id}">
+                        <div class="progress-record-content">
+                            <div class="record-date">${new Date(h.date).toLocaleDateString('pt-BR')}</div>
+                            <div class="record-weight">${h.weight !== null ? parseFloat(h.weight).toFixed(2) : '0.00'} kg</div>
+                            ${h.notes ? `<div class="record-notes">${h.notes}</div>` : ''}
+                        </div>
+                        <button class="btn btn-small edit-progress-btn" data-progress-id="${h.id}" data-weight="${h.weight}" data-date="${h.date}" data-notes="${h.notes || ''}">✏️ Editar</button>
                     </div>
                 `).join('');
+                
+                // Adicionar event listeners para botões de editar
+                document.querySelectorAll('.edit-progress-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => this.showEditProgressModal(e));
+                });
             }
 
-            // Renderizar gráfico de peso
-            this.renderWeightChart(history);
+            // Renderizar gráfico de peso (com dados ordenados)
+            this.renderWeightChart(sortedHistory);
         } catch (error) {
             console.error('Erro ao carregar progresso:', error);
         }
+    }
+
+    async showEditProgressModal(e) {
+        const progressId = e.target.dataset.progressId;
+        const weight = e.target.dataset.weight;
+        const date = e.target.dataset.date;
+        const notes = e.target.dataset.notes;
+        
+        const formattedDate = new Date(date).toLocaleDateString('pt-BR');
+        
+        // Criar modal
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Editar Progresso - ${formattedDate}</h3>
+                    <button class="modal-close">✕</button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-progress-form">
+                        <div class="form-group">
+                            <label for="edit-weight-input">Peso (kg)</label>
+                            <input type="number" id="edit-weight-input" value="${weight}" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-notes-input">Notas (opcional)</label>
+                            <textarea id="edit-notes-input">${notes}</textarea>
+                        </div>
+                        <div class="modal-actions">
+                            <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+                            <button type="button" class="btn" id="cancel-edit">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Event listeners do modal
+        modal.querySelector('.modal-close').addEventListener('click', () => modal.remove());
+        modal.querySelector('#cancel-edit').addEventListener('click', () => modal.remove());
+        
+        modal.querySelector('#edit-progress-form').addEventListener('submit', async (ev) => {
+            ev.preventDefault();
+            const newWeight = document.getElementById('edit-weight-input').value;
+            const newNotes = document.getElementById('edit-notes-input').value;
+            
+            try {
+                // Atualizar via API
+                await api.updateProgress(progressId, newWeight, newNotes);
+                modal.remove();
+                // Recarregar os dados do progresso
+                await this.loadProgress();
+            } catch (error) {
+                console.error('Erro ao atualizar progresso:', error);
+                alert('Erro ao atualizar o progresso');
+            }
+        });
     }
 
     async loadMedals() {
@@ -702,7 +792,6 @@ class EvoluaApp {
                 
                 <div class="exercise-input">
                     <input type="number" placeholder="Série 1 (reps)" class="exercise-reps" data-exercise-id="${exc.id}">
-                    <input type="number" placeholder="Peso (kg)" class="exercise-weight" data-exercise-id="${exc.id}">
                 </div>
                 
                 <button class="btn btn-success" data-exercise-idx="${idx}" data-exercise-id="${exc.id}">Completo ✓</button>
@@ -715,16 +804,15 @@ class EvoluaApp {
                 const exerciseIdx = parseInt(e.target.dataset.exerciseIdx);
                 const card = e.target.parentElement;
                 const reps = card.querySelector('.exercise-reps').value;
-                const weight = card.querySelector('.exercise-weight').value;
                 
                 try {
-                    if (this.currentWorkoutId && exerciseId && weight && reps) {
+                    if (this.currentWorkoutId && exerciseId && reps) {
                         await api.logExercise(
                             this.currentWorkoutId,
                             exerciseId,
                             1,
                             reps,
-                            weight,
+                            null,
                             'normal'
                         );
                         
@@ -732,7 +820,7 @@ class EvoluaApp {
                         e.target.disabled = true;
                         e.target.textContent = 'Completado ✓';
                     } else {
-                        alert('Preencha todos os campos (reps e peso)');
+                        alert('Preencha o número de repetições');
                     }
                 } catch (error) {
                     console.error('Erro ao registrar exercício:', error);
@@ -770,7 +858,7 @@ class EvoluaApp {
             labels: history.map(h => new Date(h.date).toLocaleDateString('pt-BR')),
             datasets: [{
                 label: 'Peso (kg)',
-                data: history.map(h => h.weight),
+                data: history.map(h => h.weight !== null ? parseFloat(h.weight).toFixed(2) : 0),
                 borderColor: '#4CAF50',
                 backgroundColor: 'rgba(76, 175, 80, 0.1)',
                 tension: 0.4,
@@ -787,7 +875,23 @@ class EvoluaApp {
                     legend: { display: true }
                 },
                 scales: {
-                    y: { beginAtZero: false }
+                    y: { 
+                        beginAtZero: false,
+                        ticks: {
+                            color: '#000000'
+                        },
+                        grid: {
+                            color: '#e0e0e0'
+                        }
+                    },
+                    x: {
+                        ticks: {
+                            color: '#000000'
+                        },
+                        grid: {
+                            color: '#e0e0e0'
+                        }
+                    }
                 }
             }
         });

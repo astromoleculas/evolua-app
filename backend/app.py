@@ -9,7 +9,7 @@ from flask_jwt_extended import JWTManager, create_access_token, jwt_required, ge
 from werkzeug.security import generate_password_hash, check_password_hash
 from config import DevelopmentConfig
 from models import db, User, Plan, PlanWeek, TrainingSession, SessionExercise, Exercise, Workout, ExerciseLog, Progress, Medal
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import random
 from functools import wraps
 
@@ -521,13 +521,14 @@ def complete_workout(workout_id):
 @app.route('/api/workouts/<int:user_id>', methods=['GET'])
 @jwt_required()
 def get_user_workouts(user_id):
-    """Obter histórico de treinos do usuário"""
+    """Obter histórico de treinos do usuário (apenas finalizados)"""
     current_user = get_jwt_identity()
     
     if int(current_user) != user_id:
         return jsonify({'error': 'Acesso negado'}), 403
     
-    workouts = Workout.query.filter_by(user_id=user_id).order_by(Workout.date.desc()).all()
+    # Retornar apenas treinos completos (completed=True)
+    workouts = Workout.query.filter_by(user_id=user_id, completed=True).order_by(Workout.date.desc()).all()
     
     return jsonify([{
         'id': w.id,
@@ -603,10 +604,36 @@ def get_stats(user_id):
 @app.route('/api/progress', methods=['POST'])
 @jwt_required()
 def log_progress():
-    """Registrar progresso (peso, medidas, foto)"""
+    """Registrar progresso (peso, medidas, foto) - máximo um por dia"""
     user_id = int(get_jwt_identity())
     data = request.get_json()
     
+    # Obter data de hoje (apenas ano, mês, dia)
+    today = date.today()
+    
+    # Verificar se já existe registro de progresso para hoje
+    existing_progress = Progress.query.filter(
+        Progress.user_id == user_id,
+        db.func.date(Progress.date) == today
+    ).first()
+    
+    if existing_progress:
+        # Atualizar registro existente
+        existing_progress.weight = data.get('weight')
+        existing_progress.body_measurements = data.get('body_measurements', {})
+        existing_progress.photo_url = data.get('photo_url')
+        existing_progress.notes = data.get('notes')
+        existing_progress.date = datetime.utcnow()
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': 'Progresso atualizado com sucesso (já havia registro de hoje)',
+            'progress_id': existing_progress.id,
+            'updated': True
+        }), 200
+    
+    # Criar novo registro se não existir para hoje
     progress = Progress(
         user_id=user_id,
         weight=data.get('weight'),
@@ -620,7 +647,8 @@ def log_progress():
     
     return jsonify({
         'message': 'Progresso registrado com sucesso',
-        'progress_id': progress.id
+        'progress_id': progress.id,
+        'updated': False
     }), 201
 
 @app.route('/api/progress/<int:user_id>', methods=['GET'])
@@ -642,6 +670,33 @@ def get_progress_history(user_id):
         'photo_url': p.photo_url,
         'notes': p.notes
     } for p in progress_records]), 200
+
+@app.route('/api/progress/<int:progress_id>', methods=['PUT'])
+@jwt_required()
+def update_progress(progress_id):
+    """Atualizar registro de progresso"""
+    user_id = int(get_jwt_identity())
+    progress = Progress.query.get(progress_id)
+    
+    if not progress or progress.user_id != user_id:
+        return jsonify({'error': 'Registro não encontrado ou acesso negado'}), 403
+    
+    data = request.get_json()
+    
+    if 'weight' in data:
+        progress.weight = data['weight']
+    if 'notes' in data:
+        progress.notes = data['notes']
+    
+    db.session.commit()
+    
+    return jsonify({
+        'message': 'Progresso atualizado com sucesso',
+        'id': progress.id,
+        'date': progress.date.isoformat(),
+        'weight': progress.weight,
+        'notes': progress.notes
+    }), 200
 
 # ==================== EXERCÍCIOS ====================
 

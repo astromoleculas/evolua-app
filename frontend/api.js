@@ -150,6 +150,12 @@ class EvoluaAPI {
         return await this.request(`/api/progress/${userId}`, 'GET');
     }
 
+    async updateProgress(progressId, weight, notes = '') {
+        return await this.request(`/api/progress/${progressId}`, 'PUT', {
+            weight, notes
+        });
+    }
+
     // ==================== EXERCÍCIOS ====================
 
     async getExercises() {
