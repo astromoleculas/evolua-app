@@ -1,141 +1,161 @@
-const API_BASE_URL = "http://localhost:5000/api";
+/**
+ * API Cliente para EVOLUA
+ * Lida com todas as requisições para o backend
+ */
 
 class EvoluaAPI {
-  constructor(baseURL = API_BASE_URL) {
-    this.baseURL = baseURL;
-  }
-
-  async request(endpoint, options = {}) {
-    const url = `${this.baseURL}${endpoint}`;
-    const response = await fetch(url, {
-      headers: {
-        "Content-Type": "application/json",
-        ...options.headers,
-      },
-      ...options,
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "API Error");
+    constructor(baseURL = 'http://localhost:5000') {
+        this.baseURL = baseURL;
+        this.token = localStorage.getItem('access_token');
     }
 
-    return response.json();
-  }
+    /**
+     * Fazer requisição genérica
+     */
+    async request(endpoint, method = 'GET', data = null) {
+        const url = `${this.baseURL}${endpoint}`;
+        const options = {
+            method,
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        };
 
-  // User endpoints
-  async createUser(userData) {
-    return this.request("/users", {
-      method: "POST",
-      body: JSON.stringify(userData),
-    });
-  }
+        if (this.token) {
+            options.headers['Authorization'] = `Bearer ${this.token}`;
+        }
 
-  async getUser(userId) {
-    return this.request(`/users/${userId}`);
-  }
+        if (data) {
+            options.body = JSON.stringify(data);
+        }
 
-  async updateUser(userId, userData) {
-    return this.request(`/users/${userId}`, {
-      method: "PUT",
-      body: JSON.stringify(userData),
-    });
-  }
+        const response = await fetch(url, options);
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Erro na requisição');
+        }
 
-  async loginUser(email) {
-    return this.request(`/users/email/${email}`);
-  }
-
-  // Exercise endpoints
-  async getExercises(filters = {}) {
-    let url = "/exercises";
-    const params = new URLSearchParams();
-
-    if (filters.muscle_group)
-      params.append("muscle_group", filters.muscle_group);
-    if (filters.difficulty) params.append("difficulty", filters.difficulty);
-
-    if (params.toString()) {
-      url += `?${params.toString()}`;
+        return await response.json();
     }
 
-    return this.request(url);
-  }
+    // ==================== AUTENTICAÇÃO ====================
 
-  async createExercise(exerciseData) {
-    return this.request("/exercises", {
-      method: "POST",
-      body: JSON.stringify(exerciseData),
-    });
-  }
+    async register(name, email, password, objective = 'hipertrofia', level = 'iniciante') {
+        const result = await this.request('/api/auth/register', 'POST', {
+            name, email, password, objective, level
+        });
+        
+        if (result.access_token) {
+            this.token = result.access_token;
+            localStorage.setItem('access_token', this.token);
+        }
+        
+        return result;
+    }
 
-  // Plan endpoints
-  async createPlan(planData) {
-    return this.request("/plans", {
-      method: "POST",
-      body: JSON.stringify(planData),
-    });
-  }
+    async login(email, password) {
+        const result = await this.request('/api/auth/login', 'POST', { email, password });
+        
+        if (result.access_token) {
+            this.token = result.access_token;
+            localStorage.setItem('access_token', this.token);
+            localStorage.setItem('user_id', result.user_id);
+        }
+        
+        return result;
+    }
 
-  async getPlan(planId) {
-    return this.request(`/plans/${planId}`);
-  }
+    logout() {
+        this.token = null;
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('user_id');
+    }
 
-  async getUserPlans(userId) {
-    return this.request(`/plans/user/${userId}`);
-  }
+    // ==================== PERFIL ====================
 
-  async deletePlan(planId) {
-    return this.request(`/plans/${planId}`, {
-      method: "DELETE",
-    });
-  }
+    async getProfile() {
+        return await this.request('/api/users/profile', 'GET');
+    }
 
-  // Workout endpoints
-  async createWorkout(workoutData) {
-    return this.request("/workouts", {
-      method: "POST",
-      body: JSON.stringify(workoutData),
-    });
-  }
+    async updateProfile(data) {
+        return await this.request('/api/users/profile', 'PUT', data);
+    }
 
-  async getUserWorkouts(userId) {
-    return this.request(`/workouts/${userId}`);
-  }
+    // ==================== PLANOS ====================
 
-  // Progress endpoints
-  async logProgress(progressData) {
-    return this.request("/progress", {
-      method: "POST",
-      body: JSON.stringify(progressData),
-    });
-  }
+    async getPlans() {
+        return await this.request('/api/plans', 'GET');
+    }
 
-  async getUserProgress(userId) {
-    return this.request(`/progress/${userId}`);
-  }
+    async createPlan() {
+        return await this.request('/api/plans', 'POST', {});
+    }
 
-  async getGamificationStats(userId) {
-    return this.request(`/gamification/stats/${userId}`);
-  }
+    async getPlanDetails(planId) {
+        return await this.request(`/api/plans/${planId}`, 'GET');
+    }
 
-  // Medal endpoints
-  async getUserMedals(userId) {
-    return this.request(`/medals/${userId}`);
-  }
+    // ==================== TREINOS ====================
 
-  async awardMedal(medalData) {
-    return this.request("/medals", {
-      method: "POST",
-      body: JSON.stringify(medalData),
-    });
-  }
+    async createWorkout(trainingSessionId) {
+        return await this.request('/api/workouts', 'POST', {
+            training_session_id: trainingSessionId
+        });
+    }
 
-  // Health check
-  async health() {
-    return this.request("/health");
-  }
+    async logExercise(workoutId, exerciseId, setsCompleted, actualReps, weightPerSet, difficultyFeedback) {
+        return await this.request(`/api/workouts/${workoutId}/exercise`, 'POST', {
+            exercise_id: exerciseId,
+            sets_completed: setsCompleted,
+            actual_reps: actualReps,
+            weight_per_set: weightPerSet,
+            difficulty_feedback: difficultyFeedback
+        });
+    }
+
+    async completeWorkout(workoutId, durationMinutes) {
+        return await this.request(`/api/workouts/${workoutId}/complete`, 'PUT', {
+            duration_minutes: durationMinutes
+        });
+    }
+
+    async getUserWorkouts() {
+        const userId = localStorage.getItem('user_id');
+        return await this.request(`/api/workouts/${userId}`, 'GET');
+    }
+
+    // ==================== GAMIFICAÇÃO ====================
+
+    async getMedals() {
+        const userId = localStorage.getItem('user_id');
+        return await this.request(`/api/medals/${userId}`, 'GET');
+    }
+
+    async getStats() {
+        const userId = localStorage.getItem('user_id');
+        return await this.request(`/api/stats/${userId}`, 'GET');
+    }
+
+    // ==================== PROGRESSO ====================
+
+    async logProgress(weight, bodyMeasurements = {}, photoUrl = null, notes = '') {
+        return await this.request('/api/progress', 'POST', {
+            weight, body_measurements: bodyMeasurements, photo_url: photoUrl, notes
+        });
+    }
+
+    async getProgressHistory() {
+        const userId = localStorage.getItem('user_id');
+        return await this.request(`/api/progress/${userId}`, 'GET');
+    }
+
+    // ==================== EXERCÍCIOS ====================
+
+    async getExercises() {
+        return await this.request('/api/exercises', 'GET');
+    }
 }
 
-// Create global API instance
+// Criar instância global
 const api = new EvoluaAPI();

@@ -1,910 +1,807 @@
-// Global state
-let appState = {
-  currentUser: null,
-  userId: localStorage.getItem("userId") || null,
-};
-
-// Usuários salvos para teste rápido
-const SAVED_USERS = [
-  {
-    name: "Carlos Mendes",
-    email: "carlos@example.com",
-    password: "senha123",
-    objective: "ganho_massa",
-    level: "iniciante",
-    days: 3,
-  },
-  {
-    name: "Juliana Lima",
-    email: "juliana@example.com",
-    password: "senha456",
-    objective: "perda_peso",
-    level: "intermediario",
-    days: 4,
-  },
-  {
-    name: "João Silva",
-    email: "joao@example.com",
-    password: "senha789",
-    objective: "tonificacao",
-    level: "intermediario",
-    days: 5,
-  },
-];
-
-// DOM Elements
-const app = document.getElementById("app");
-const pages = document.querySelectorAll(".page");
-const navLinks = document.querySelectorAll(".nav-link");
-
-// Initialize app
-document.addEventListener("DOMContentLoaded", () => {
-  initializeApp();
-  setupEventListeners();
-});
-
-function initializeApp() {
-  if (!appState.userId) {
-    showAuthModal();
-  } else {
-    loadUserData();
-    showDashboard();
-  }
-}
-
-function setupEventListeners() {
-  // Navigation
-  navLinks.forEach((link) => {
-    link.addEventListener("click", (e) => {
-      e.preventDefault();
-      const page = link.getAttribute("data-page");
-      navigateTo(page);
-    });
-  });
-
-  // Logout button
-  const logoutBtn = document.getElementById("logout-btn");
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", handleLogout);
-  }
-
-  // Auth form
-  const authForm = document.getElementById("auth-form");
-  if (authForm) {
-    authForm.addEventListener("submit", handleAuth);
-  }
-
-  // Usuários salvos
-  const newUserBtn = document.getElementById("new-user-btn");
-  if (newUserBtn) {
-    newUserBtn.addEventListener("click", () => switchAuthTab("new-user"));
-  }
-
-  const backBtn = document.getElementById("back-btn");
-  if (backBtn) {
-    backBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      switchAuthTab("saved-users");
-    });
-  }
-
-  // Renderizar usuários salvos
-  renderSavedUsers();
-
-  // Profile form
-  const profileForm = document.getElementById("profile-form");
-  if (profileForm) {
-    profileForm.addEventListener("submit", handleProfileUpdate);
-  }
-
-  // Workout form
-  const workoutForm = document.getElementById("workout-form");
-  if (workoutForm) {
-    workoutForm.addEventListener("submit", handleWorkoutSubmit);
-  }
-
-  // Progress form
-  const progressForm = document.getElementById("progress-form");
-  if (progressForm) {
-    progressForm.addEventListener("submit", handleProgressSubmit);
-  }
-
-  // Buttons
-  const startBtn = document.getElementById("start-btn");
-  if (startBtn) {
-    startBtn.addEventListener("click", () => navigateTo("plans"));
-  }
-
-  const createPlanBtn = document.getElementById("create-plan-btn");
-  if (createPlanBtn) {
-    createPlanBtn.addEventListener("click", () => handleCreatePlan());
-  }
-
-  const logWorkoutBtn = document.getElementById("log-workout-btn");
-  if (logWorkoutBtn) {
-    logWorkoutBtn.addEventListener("click", () => openModal("workout-modal"));
-  }
-
-  const logProgressBtn = document.getElementById("log-progress-btn");
-  if (logProgressBtn) {
-    logProgressBtn.addEventListener("click", () => openModal("progress-modal"));
-  }
-
-  // Modal close buttons
-  document.querySelectorAll(".close").forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      const modal = e.target.closest(".modal");
-      closeModal(modal);
-    });
-  });
-
-  // Close modal on outside click
-  document.querySelectorAll(".modal").forEach((modal) => {
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        closeModal(modal);
-      }
-    });
-  });
-}
-
-// Navigation
-function navigateTo(pageName) {
-  // Hide all pages
-  pages.forEach((page) => page.classList.remove("active"));
-
-  // Remove active from nav links
-  navLinks.forEach((link) => link.classList.remove("active"));
-
-  // Show selected page
-  const page = document.getElementById(`${pageName}-page`);
-  if (page) {
-    page.classList.add("active");
-  }
-
-  // Update nav link
-  const link = document.querySelector(`[data-page="${pageName}"]`);
-  if (link) {
-    link.classList.add("active");
-  }
-
-  // Load page data
-  if (pageName === "dashboard") {
-    loadDashboardData();
-  } else if (pageName === "profile") {
-    loadProfileData();
-  } else if (pageName === "plans") {
-    loadPlansData();
-  } else if (pageName === "workouts") {
-    loadWorkoutsData();
-  } else if (pageName === "progress") {
-    loadProgressData();
-  }
-}
-
-function showDashboard() {
-  navigateTo("dashboard");
-}
-
-// Auth
-async function handleAuth(e) {
-  e.preventDefault();
-
-  const name = document.getElementById("auth-name").value;
-  const email = document.getElementById("auth-email").value;
-  const password = document.getElementById("auth-password").value;
-
-  try {
-    const user = await api.createUser({
-      name,
-      email,
-      password,
-    });
-
-    appState.currentUser = user;
-    appState.userId = user.id;
-
-    localStorage.setItem("userId", user.id);
-    localStorage.setItem("userName", user.name);
-
-    document.getElementById("auth-name").value = "";
-    document.getElementById("auth-email").value = "";
-    document.getElementById("auth-password").value = "";
-
-    closeModal(document.getElementById("auth-modal"));
-    updateUserName();
-    loadUserData();
-    showDashboard();
-  } catch (error) {
-    alert("Erro ao fazer login/registrar: " + error.message);
-  }
-}
-
-function handleLogout() {
-  if (confirm("Tem certeza que deseja sair?")) {
-    logout();
-  }
-}
-
-function logout() {
-  // Limpar estado
-  appState.currentUser = null;
-  appState.userId = null;
-
-  // Limpar localStorage
-  localStorage.removeItem("userId");
-  localStorage.removeItem("userName");
-
-  // Mostrar modal de login
-  showAuthModal();
-}
-
-// Load user data
-async function loadUserData() {
-    if (!appState.userId) {
-        console.warn('Nenhum userId definido');
-        return;
-    }
-
-    try {
-        console.log('📊 Carregando dados do usuário:', appState.userId);
-
-        // Carregar gamificação PRIMEIRO
-        const stats = await loadGamificationStats(appState.userId);
-
-        // Depois atualizar streak com os dados retornados
-        if (stats && stats.streak !== undefined) {
-            const streakEl = document.getElementById('streak');
-            if (streakEl) streakEl.textContent = stats.streak + ' dias';
-        }
-
-        // Carregar gráficos (se existir função)
-        if (typeof updateAllCharts === 'function') {
-            await updateAllCharts(appState.userId);
-        }
-    } catch (error) {
-        console.error('❌ Erro ao carregar dados:', error);
-    }
-}
-
-function updateWelcomeMessage() {
-  const welcomeMsg = document.getElementById("welcome-message");
-  if (welcomeMsg && appState.currentUser) {
-    welcomeMsg.textContent = `Bem-vindo, ${appState.currentUser.name}! Vamos continuar sua transformação!`;
-  }
-}
-
-function updateUserName() {
-  const userNameElement = document.getElementById("user-name");
-  if (userNameElement && appState.currentUser) {
-    userNameElement.textContent = appState.currentUser.name;
-  }
-}
-
-// Profile
-async function loadProfileData() {
-  if (!appState.currentUser) {
-    return;
-  }
-
-  const user = appState.currentUser;
-
-  document.getElementById("name").value = user.name || "";
-  document.getElementById("email").value = user.email || "";
-  document.getElementById("age").value = user.age || "";
-  document.getElementById("objective").value = user.objective || "";
-  document.getElementById("level").value = user.level || "";
-  document.getElementById("days-per-week").value = user.days_per_week || "";
-  document.getElementById("location").value = user.training_location || "";
-}
-
-async function handleProfileUpdate(e) {
-  e.preventDefault();
-
-  const userData = {
-    name: document.getElementById("name").value,
-    age: parseInt(document.getElementById("age").value) || null,
-    objective: document.getElementById("objective").value,
-    level: document.getElementById("level").value,
-    days_per_week: parseInt(document.getElementById("days-per-week").value),
-    training_location: document.getElementById("location").value,
-  };
-
-  try {
-    await api.updateUser(appState.userId, userData);
-    await loadUserData();
-    alert("Perfil atualizado com sucesso!");
-  } catch (error) {
-    alert("Erro ao atualizar perfil: " + error.message);
-  }
-}
-
-// Dashboard
-async function loadDashboardData() {
-  try {
-    if (!appState.currentUser) {
-      return;
-    }
-
-    // Update stats
-    document.getElementById("points").textContent =
-      appState.currentUser.points || 0;
-
-    // Load recent workouts
-    const workouts = await api.getUserWorkouts(appState.userId);
-    const recentList = document.getElementById("recent-workouts");
-
-    if (workouts.length === 0) {
-      recentList.innerHTML = "<p>Nenhum treino registrado</p>";
-    } else {
-      recentList.innerHTML = workouts
-        .slice(0, 5)
-        .map(
-          (w) => `
-                <div class="workout-item">
-                    <div class="workout-info">
-                        <h4>${new Date(w.date).toLocaleDateString("pt-BR")}</h4>
-                        <p>Duração: ${w.duration_minutes} min | Peso: ${
-            w.total_weight || "N/A"
-          } kg</p>
-                    </div>
-                    <span class="badge badge-success">Completo</span>
-                </div>
-            `
-        )
-        .join("");
-    }
-
-    // Update workouts count
-    document.getElementById("workouts-count").textContent = workouts.length;
-
-    // Load medals
-    const medals = await api.getUserMedals(appState.userId);
-    document.getElementById("medals-count").textContent = medals.length;
-
-    // Calculate streak
-    const streak = calculateStreak(workouts);
-    document.getElementById("streak").textContent = streak + " dias";
-  } catch (error) {
-    console.error("Error loading dashboard:", error);
-  }
-}
-
 /**
- * Calcula o número de dias consecutivos de treino
+ * EVOLUA - Aplicação Principal
+ * SPA que gerencia todo o fluxo de usuário
  */
-function calculateStreak(workouts) {
-  if (workouts.length === 0) {
-    return 0;
-  }
 
-  // Ordenar treinos por data (mais recentes primeiro)
-  const sortedWorkouts = workouts.sort((a, b) => {
-    return new Date(b.date) - new Date(a.date);
-  });
-
-  // Converter datas para apenas a data (sem hora)
-  // Usar apenas a parte YYYY-MM-DD da string ISO
-  const uniqueDates = [];
-  const dateSet = new Set();
-
-  sortedWorkouts.forEach((workout) => {
-    const date = new Date(workout.date);
-    // Extrair apenas YYYY-MM-DD usando o método ISO (UTC)
-    const dateKey = date.toISOString().split("T")[0];
-
-    if (!dateSet.has(dateKey)) {
-      dateSet.add(dateKey);
-      uniqueDates.push(dateKey); // Armazenar como string
+class EvoluaApp {
+    constructor() {
+        this.currentUser = null;
+        this.currentPlan = null;
+        this.currentWorkout = null;
+        this.currentWorkoutId = null;
+        this.currentPage = 'login';
+        this.workoutTimer = null;
+        this.workoutStartTime = null;
+        
+        this.init();
     }
-  });
 
-  // Se não há treinos, streak é 0
-  if (uniqueDates.length === 0) {
-    return 0;
-  }
-
-  console.log("Datas únicas:", uniqueDates);
-
-  // Converter strings de data para objetos Date em UTC
-  const dateDates = uniqueDates.map((dateStr) => {
-    const [year, month, day] = dateStr.split("-");
-    return new Date(year, parseInt(month) - 1, day);
-  });
-
-  let streak = 1; // Pelo menos 1 dia
-
-  // Pegar hoje em UTC
-  const today = new Date();
-  const todayKey = today.toISOString().split("T")[0];
-  const todayDate = new Date(
-    todayKey.split("-")[0],
-    parseInt(todayKey.split("-")[1]) - 1,
-    parseInt(todayKey.split("-")[2])
-  );
-
-  console.log("Hoje:", todayKey);
-  console.log("Treino mais recente:", uniqueDates[0]);
-
-  // Verificar se o treino mais recente foi hoje ou ontem
-  const mostRecentDate = dateDates[0];
-  const dayDifference = Math.floor(
-    (todayDate - mostRecentDate) / (1000 * 60 * 60 * 24)
-  );
-
-  console.log("Diferença de dias:", dayDifference);
-
-  // Se o treino mais recente foi há 2 ou mais dias, streak é 0
-  if (dayDifference > 1) {
-    console.log("Treino muito antigo, streak zerado");
-    return 0;
-  }
-
-  // Contar dias consecutivos para trás
-  for (let i = 0; i < dateDates.length - 1; i++) {
-    const currentDate = dateDates[i];
-    const nextDate = dateDates[i + 1];
-
-    // Calcular diferença em dias
-    const daysDiff = Math.round(
-      (currentDate - nextDate) / (1000 * 60 * 60 * 24)
-    );
-
-    console.log(
-      `Comparando ${uniqueDates[i]} e ${
-        uniqueDates[i + 1]
-      }: diferença = ${daysDiff} dias`
-    );
-
-    // Se a diferença é exatamente 1 dia, continua o streak
-    if (daysDiff === 1) {
-      streak++;
-    } else {
-      // Se não é 1 dia de diferença, para de contar
-      break;
+    init() {
+        this.checkAuth();
+        this.render();
+        this.attachEventListeners();
     }
-  }
 
-  console.log("Streak final:", streak);
-  return streak;
-}
+    checkAuth() {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+            this.currentPage = 'login';
+        } else {
+            this.currentPage = 'dashboard';
+            this.loadUserData();
+        }
+    }
 
-// Plans
-async function loadPlansData() {
-  const plansList = document.getElementById("plans-list");
-  plansList.innerHTML = "<p>Carregando planos...</p>";
+    async loadUserData() {
+        try {
+            const profile = await api.getProfile();
+            this.currentUser = profile;
+        } catch (error) {
+            console.error('Erro ao carregar perfil:', error);
+            this.logout();
+        }
+    }
 
-  try {
-    const plans = await api.getUserPlans(appState.userId);
+    // ==================== RENDER ====================
 
-    if (plans.length === 0) {
-      plansList.innerHTML =
-        '<p>Nenhum plano criado. Clique em "Criar Novo Plano" para começar!</p>';
-    } else {
-      plansList.innerHTML = plans
-        .map(
-          (p) => `
-                <div class="plan-item">
-                    <div class="plan-info">
-                        <h4>${p.name}</h4>
-                        <p>${p.description}</p>
-                        <p style="font-size: 0.85rem; color: #6b7280; margin-top: 0.5rem;">
-                            📅 ${p.duration_weeks} semanas | 📋 ${
-            p.weeks_count
-          } semanas planejadas
-                        </p>
-                        <p style="font-size: 0.75rem; color: #9ca3af; margin-top: 0.25rem;">
-                            Criado em ${new Date(
-                              p.created_at
-                            ).toLocaleDateString("pt-BR")}
-                        </p>
+    render() {
+        const app = document.getElementById('app');
+        app.innerHTML = this.getPageHTML();
+        this.attachEventListeners();
+    }
+
+    getPageHTML() {
+        switch (this.currentPage) {
+            case 'login':
+                return this.getLoginHTML();
+            case 'register':
+                return this.getRegisterHTML();
+            case 'dashboard':
+                return this.getDashboardHTML();
+            case 'workout':
+                return this.getWorkoutHTML();
+            case 'progress':
+                return this.getProgressHTML();
+            case 'medals':
+                return this.getMedalsHTML();
+            case 'profile':
+                return this.getProfileHTML();
+            default:
+                return this.getLoginHTML();
+        }
+    }
+
+    // ==================== PÁGINAS ====================
+
+    getLoginHTML() {
+        return `
+            <div class="auth-container">
+                <div class="auth-card">
+                    <div class="auth-header">
+                        <h1>🏋️ EVOLUA</h1>
+                        <p>Seu Personal Trainer Digital</p>
                     </div>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn btn-secondary" onclick="viewPlanDetails(${
-                          p.id
-                        })">Ver Detalhes</button>
-                        <button class="btn btn-danger" onclick="deletePlanConfirm(${
-                          p.id
-                        }, '${p.name}')">Deletar</button>
+                    
+                    <form id="login-form" class="auth-form">
+                        <input type="email" id="login-email" placeholder="Email" required>
+                        <input type="password" id="login-password" placeholder="Senha" required>
+                        <button type="submit" class="btn btn-primary btn-full">Entrar</button>
+                    </form>
+                    
+                    <div class="auth-divider">ou</div>
+                    
+                    <button class="btn btn-secondary btn-full" id="go-to-register">Criar Conta</button>
+                    
+                    <div class="demo-info">
+                        <p><strong>Demo:</strong> Email: demo@evolua.com | Senha: demo123</p>
                     </div>
                 </div>
-            `
-        )
-        .join("");
-    }
-  } catch (error) {
-    console.error("Error loading plans:", error);
-    plansList.innerHTML = "<p>Erro ao carregar planos</p>";
-  }
-}
-
-async function viewPlanDetails(planId) {
-  try {
-    const plan = await api.getPlan(planId);
-    console.log("Detalhes do plano:", plan);
-    alert(
-      `Plano: ${plan.name}\n\nSemanas: ${plan.weeks.length}\nExercícios estruturados por semana`
-    );
-  } catch (error) {
-    alert("Erro ao carregar detalhes: " + error.message);
-  }
-}
-
-function deletePlanConfirm(planId, planName) {
-  if (
-    confirm(
-      `Tem certeza que deseja deletar o plano "${planName}"? Esta ação não pode ser desfeita.`
-    )
-  ) {
-    deletePlan(planId);
-  }
-}
-
-async function deletePlan(planId) {
-  try {
-    await api.deletePlan(planId);
-    alert("Plano deletado com sucesso!");
-    loadPlansData();
-  } catch (error) {
-    alert("Erro ao deletar plano: " + error.message);
-  }
-}
-
-async function handleCreatePlan() {
-  try {
-    const plan = await api.createPlan({
-      user_id: appState.userId,
-    });
-
-    alert("Plano criado com sucesso!");
-    loadPlansData();
-  } catch (error) {
-    alert("Erro ao criar plano: " + error.message);
-  }
-}
-
-// Workouts
-async function loadWorkoutsData() {
-  try {
-    const workouts = await api.getUserWorkouts(appState.userId);
-    const workoutsList = document.getElementById("workouts-list");
-
-    if (workouts.length === 0) {
-      workoutsList.innerHTML = "<p>Nenhum treino registrado</p>";
-    } else {
-      workoutsList.innerHTML = workouts
-        .map(
-          (w) => `
-                <div class="workout-item">
-                    <div class="workout-info">
-                        <h4>${new Date(w.date).toLocaleDateString("pt-BR", {
-                          weekday: "long",
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        })}</h4>
-                        <p>Duração: ${w.duration_minutes} min | Peso total: ${
-            w.total_weight || "N/A"
-          } kg</p>
-                        <p>Calorias: ${w.calories_burned || 0} kcal</p>
-                    </div>
-                    <span class="badge badge-success">Completo</span>
-                </div>
-            `
-        )
-        .join("");
-    }
-  } catch (error) {
-    console.error("Error loading workouts:", error);
-  }
-}
-
-async function handleWorkoutSubmit(e) {
-  e.preventDefault();
-
-  const workoutData = {
-    user_id: appState.userId,
-    duration_minutes: parseInt(
-      document.getElementById("workout-duration").value
-    ),
-    total_weight:
-      parseFloat(document.getElementById("workout-weight").value) || null,
-    calories_burned:
-      parseFloat(document.getElementById("workout-calories").value) || null,
-    notes: document.getElementById("workout-notes").value,
-    completed: true,
-  };
-
-  try {
-    await api.createWorkout(workoutData);
-    alert("Treino registrado com sucesso!");
-    document.getElementById("workout-form").reset();
-    closeModal(document.getElementById("workout-modal"));
-    loadDashboardData();
-    loadWorkoutsData();
-  } catch (error) {
-    alert("Erro ao registrar treino: " + error.message);
-  }
-}
-
-// Progress
-async function loadProgressData() {
-  try {
-    const progress = await api.getUserProgress(appState.userId);
-    const gallery = document.getElementById("progress-gallery");
-
-    if (progress.length === 0) {
-      gallery.innerHTML = "<p>Nenhuma foto de progresso registrada</p>";
-    } else {
-      gallery.innerHTML = progress
-        .map(
-          (p) => `
-                <div class="photo-item">
-                    ${
-                      p.photo_url
-                        ? `<img src="${p.photo_url}" alt="Progresso">`
-                        : '<div style="background: #ddd; height: 200px; display: flex; align-items: center; justify-content: center;">Sem foto</div>'
-                    }
-                    <div class="photo-date">
-                        <strong>${p.weight ? p.weight + " kg" : ""}</strong><br>
-                        ${new Date(p.date).toLocaleDateString("pt-BR")}
-                    </div>
-                </div>
-            `
-        )
-        .join("");
-    }
-
-    // Criar gráficos
-    await updateAllCharts(appState.userId);
-  } catch (error) {
-    console.error("Error loading progress:", error);
-  }
-}
-
-async function handleProgressSubmit(e) {
-  e.preventDefault();
-
-  const progressData = {
-    user_id: appState.userId,
-    weight: parseFloat(document.getElementById("progress-weight").value),
-    photo_url: document.getElementById("progress-photo").value || null,
-    notes: document.getElementById("progress-notes").value,
-  };
-
-  try {
-    await api.logProgress(progressData);
-    alert("Progresso registrado com sucesso!");
-    document.getElementById("progress-form").reset();
-    closeModal(document.getElementById("progress-modal"));
-    loadProgressData();
-    loadDashboardData();
-  } catch (error) {
-    alert("Erro ao registrar progresso: " + error.message);
-  }
-}
-
-// Modal functions
-function openModal(modalId) {
-  const modal = document.getElementById(modalId);
-  if (modal) {
-    modal.classList.add("active");
-  }
-}
-
-function closeModal(modal) {
-  if (modal) {
-    modal.classList.remove("active");
-  }
-}
-
-function showAuthModal() {
-  const modal = document.getElementById("auth-modal");
-  if (modal) {
-    modal.classList.add("active");
-    switchAuthTab("saved-users");
-  }
-}
-
-function switchAuthTab(tabName) {
-  const savedUsersTab = document.getElementById("saved-users-tab");
-  const newUserTab = document.getElementById("new-user-tab");
-
-  if (tabName === "saved-users") {
-    savedUsersTab.classList.add("active");
-    newUserTab.classList.remove("active");
-  } else if (tabName === "new-user") {
-    savedUsersTab.classList.remove("active");
-    newUserTab.classList.add("active");
-  }
-}
-
-function renderSavedUsers() {
-  const usersList = document.getElementById("saved-users-list");
-  if (!usersList) return;
-
-  usersList.innerHTML = SAVED_USERS.map(
-    (user) => `
-        <div class="user-option" onclick="quickLogin('${user.email}', '${
-      user.password
-    }', '${user.name}')">
-            <h4>${user.name}</h4>
-            <div class="user-option-details">
-                <span>📧 ${user.email}</span>
-                <span>🎯 ${
-                  user.objective === "ganho_massa"
-                    ? "Ganho de Massa"
-                    : user.objective === "perda_peso"
-                    ? "Perda de Peso"
-                    : "Tonificação"
-                }</span>
-                <span>📊 ${
-                  user.level === "iniciante"
-                    ? "Iniciante"
-                    : user.level === "intermediario"
-                    ? "Intermediário"
-                    : "Avançado"
-                }</span>
-                <span>📅 ${user.days} dias/semana</span>
             </div>
-        </div>
-    `
-  ).join("");
-}
+        `;
+    }
 
-async function quickLogin(email, password, name) {
-  try {
-    // Sempre tenta fazer login com um usuário existente primeiro
-    const user = await api.loginUser(email);
+    getRegisterHTML() {
+        return `
+            <div class="auth-container">
+                <div class="auth-card">
+                    <div class="auth-header">
+                        <h1>🏋️ EVOLUA</h1>
+                        <p>Comece sua transformação</p>
+                    </div>
+                    
+                    <form id="register-form" class="auth-form">
+                        <input type="text" id="register-name" placeholder="Nome Completo" required>
+                        <input type="email" id="register-email" placeholder="Email" required>
+                        <input type="password" id="register-password" placeholder="Senha (min. 6 caracteres)" required>
+                        
+                        <select id="register-objective" required>
+                            <option value="">Selecione seu objetivo</option>
+                            <option value="hipertrofia">Ganho de Massa</option>
+                            <option value="perda_peso">Perda de Peso</option>
+                            <option value="tonificacao">Tonificação</option>
+                        </select>
+                        
+                        <select id="register-level" required>
+                            <option value="">Qual é seu nível?</option>
+                            <option value="iniciante">Iniciante</option>
+                            <option value="intermediario">Intermediário</option>
+                            <option value="avancado">Avançado</option>
+                        </select>
+                        
+                        <button type="submit" class="btn btn-primary btn-full">Criar Conta</button>
+                    </form>
+                    
+                    <button class="btn btn-secondary btn-full" id="go-to-login" style="margin-top: 10px;">Voltar ao Login</button>
+                </div>
+            </div>
+        `;
+    }
 
-    // Se chegou aqui, usuário foi encontrado
-    appState.currentUser = user;
-    appState.userId = user.id;
+    getDashboardHTML() {
+        return `
+            <nav class="navbar">
+                <div class="navbar-brand">🏋️ EVOLUA</div>
+                <div class="navbar-menu">
+                    <button class="nav-btn" data-page="dashboard">Dashboard</button>
+                    <button class="nav-btn" data-page="progress">Progresso</button>
+                    <button class="nav-btn" data-page="medals">Medalhas</button>
+                    <button class="nav-btn" data-page="profile">Perfil</button>
+                    <button class="nav-btn logout-btn" id="logout-btn">Sair</button>
+                </div>
+            </nav>
+            
+            <div class="container">
+                <div class="dashboard">
+                    <div class="dashboard-header">
+                        <h1>Bem-vindo, ${this.currentUser?.name || 'Usuário'}! 👋</h1>
+                        <p>${new Date().toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                    </div>
+                    
+                    <div class="stats-grid" id="stats-container">
+                        <div class="stat-card">
+                            <div class="stat-value" id="points-display">0</div>
+                            <div class="stat-label">Pontos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="workouts-display">0</div>
+                            <div class="stat-label">Treinos Completos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="streak-display">0</div>
+                            <div class="stat-label">Dias Consecutivos</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="medals-display">0</div>
+                            <div class="stat-label">Medalhas</div>
+                        </div>
+                    </div>
+                    
+                    <div class="dashboard-content">
+                        <div class="section">
+                            <h2>Seu Plano de Treino</h2>
+                            <div id="plans-container" class="plans-list">
+                                <div class="loading">Carregando planos...</div>
+                            </div>
+                        </div>
+                        
+                        <div class="section">
+                            <h2>Últimos Treinos</h2>
+                            <div id="workouts-container" class="workouts-list">
+                                <div class="loading">Carregando histórico...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
-    localStorage.setItem("userId", user.id);
-    localStorage.setItem("userName", user.name);
+    getWorkoutHTML() {
+        if (!this.currentWorkout) {
+            return '<div class="container"><p>Carregando treino...</p></div>';
+        }
 
-    closeModal(document.getElementById("auth-modal"));
-    updateUserName();
-    loadUserData();
-    showDashboard();
-  } catch (error) {
-    // Usuário não existe, tentar criar
-    if (error.message.includes("User not found")) {
-      try {
-        const newUser = await api.createUser({
-          name: name,
-          email: email,
-          password: password,
+        return `
+            <nav class="navbar">
+                <button class="btn btn-small" id="back-from-workout">← Voltar</button>
+                <span>Treino em Andamento</span>
+                <div id="workout-timer">00:00</div>
+            </nav>
+            
+            <div class="container">
+                <div class="workout-session">
+                    <h1>${this.currentWorkout.name}</h1>
+                    <div class="focus-group">${this.currentWorkout.focus}</div>
+                    
+                    <div class="exercises-list" id="exercises-container">
+                        <!-- Exercícios carregados via JS -->
+                    </div>
+                    
+                    <div class="workout-actions">
+                        <button class="btn btn-success btn-full" id="finish-workout">Finalizar Treino</button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getProgressHTML() {
+        return `
+            <nav class="navbar">
+                <div class="navbar-brand">🏋️ EVOLUA</div>
+                <button class="btn btn-small" id="back-from-progress">← Dashboard</button>
+            </nav>
+            
+            <div class="container">
+                <div class="progress-section">
+                    <h1>Seu Progresso 📊</h1>
+                    
+                    <div class="progress-input">
+                        <h3>Registrar Progresso</h3>
+                        <form id="progress-form">
+                            <input type="number" id="weight-input" placeholder="Peso (kg)" step="0.1">
+                            <textarea id="progress-notes" placeholder="Notas (opcional)"></textarea>
+                            <button type="submit" class="btn btn-primary btn-full">Registrar Progresso</button>
+                        </form>
+                    </div>
+                    
+                    <div id="progress-charts">
+                        <div class="chart-container">
+                            <canvas id="weight-chart"></canvas>
+                        </div>
+                    </div>
+                    
+                    <div id="progress-history">
+                        <h3>Histórico</h3>
+                        <div id="history-container" class="history-list">
+                            <!-- Histórico carregado via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getMedalsHTML() {
+        return `
+            <nav class="navbar">
+                <div class="navbar-brand">🏋️ EVOLUA</div>
+                <button class="btn btn-small" id="back-from-medals">← Dashboard</button>
+            </nav>
+            
+            <div class="container">
+                <div class="medals-section">
+                    <h1>Suas Medalhas 🏆</h1>
+                    <div id="medals-container" class="medals-grid">
+                        <div class="loading">Carregando medalhas...</div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    getProfileHTML() {
+        return `
+            <nav class="navbar">
+                <div class="navbar-brand">🏋️ EVOLUA</div>
+                <button class="btn btn-small" id="back-from-profile">← Dashboard</button>
+            </nav>
+            
+            <div class="container">
+                <div class="profile-section">
+                    <h1>Seu Perfil 👤</h1>
+                    
+                    <form id="profile-form" class="profile-form">
+                        <div class="form-group">
+                            <label>Nome</label>
+                            <input type="text" id="profile-name" value="${this.currentUser?.name || ''}" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Email</label>
+                            <input type="email" id="profile-email" value="${this.currentUser?.email || ''}" disabled>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Idade</label>
+                            <input type="number" id="profile-age" value="${this.currentUser?.age || ''}" min="15" max="100">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Objetivo</label>
+                            <select id="profile-objective" required>
+                                <option value="hipertrofia" ${this.currentUser?.objective === 'hipertrofia' ? 'selected' : ''}>Ganho de Massa</option>
+                                <option value="perda_peso" ${this.currentUser?.objective === 'perda_peso' ? 'selected' : ''}>Perda de Peso</option>
+                                <option value="tonificacao" ${this.currentUser?.objective === 'tonificacao' ? 'selected' : ''}>Tonificação</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Nível</label>
+                            <select id="profile-level" required>
+                                <option value="iniciante" ${this.currentUser?.level === 'iniciante' ? 'selected' : ''}>Iniciante</option>
+                                <option value="intermediario" ${this.currentUser?.level === 'intermediario' ? 'selected' : ''}>Intermediário</option>
+                                <option value="avancado" ${this.currentUser?.level === 'avancado' ? 'selected' : ''}>Avançado</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-full">Salvar Alterações</button>
+                    </form>
+                </div>
+            </div>
+        `;
+    }
+
+    // ==================== EVENT LISTENERS ====================
+
+    attachEventListeners() {
+        // Login
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+        }
+
+        // Register
+        const registerForm = document.getElementById('register-form');
+        if (registerForm) {
+            registerForm.addEventListener('submit', (e) => this.handleRegister(e));
+        }
+
+        // Navigation
+        document.querySelectorAll('[data-page]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const page = e.target.dataset.page;
+                this.currentPage = page;
+                if (page === 'dashboard') {
+                    this.loadDashboard();
+                } else if (page === 'progress') {
+                    this.loadProgress();
+                } else if (page === 'medals') {
+                    this.loadMedals();
+                }
+                this.render();
+            });
         });
 
-        appState.currentUser = newUser;
-        appState.userId = newUser.id;
+        // Logout
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', () => this.logout());
+        }
 
-        localStorage.setItem("userId", newUser.id);
-        localStorage.setItem("userName", newUser.name);
+        // Page navigation
+        document.getElementById('go-to-register')?.addEventListener('click', () => {
+            this.currentPage = 'register';
+            this.render();
+        });
 
-        closeModal(document.getElementById("auth-modal"));
-        updateUserName();
-        loadUserData();
-        showDashboard();
-      } catch (createError) {
-        alert("Erro ao criar conta: " + createError.message);
-      }
-    } else {
-      alert("Erro ao fazer login: " + error.message);
+        document.getElementById('go-to-login')?.addEventListener('click', () => {
+            this.currentPage = 'login';
+            this.render();
+        });
+
+        // Progress form
+        const progressForm = document.getElementById('progress-form');
+        if (progressForm) {
+            progressForm.addEventListener('submit', (e) => this.handleProgressSubmit(e));
+        }
+
+        // Profile form
+        const profileForm = document.getElementById('profile-form');
+        if (profileForm) {
+            profileForm.addEventListener('submit', (e) => this.handleProfileSubmit(e));
+        }
+
+        // Back buttons
+        document.getElementById('back-from-progress')?.addEventListener('click', () => {
+            this.currentPage = 'dashboard';
+            this.render();
+        });
+
+        document.getElementById('back-from-medals')?.addEventListener('click', () => {
+            this.currentPage = 'dashboard';
+            this.render();
+        });
+
+        document.getElementById('back-from-profile')?.addEventListener('click', () => {
+            this.currentPage = 'dashboard';
+            this.render();
+        });
+
+        document.getElementById('back-from-workout')?.addEventListener('click', () => {
+            this.currentPage = 'dashboard';
+            this.stopWorkoutTimer();
+            this.render();
+        });
+
+        // Finish workout button
+        const finishWorkoutBtn = document.getElementById('finish-workout');
+        if (finishWorkoutBtn) {
+            finishWorkoutBtn.addEventListener('click', (e) => this.handleFinishWorkout(e));
+        }
     }
-  }
+
+    // ==================== HANDLERS ====================
+
+    async handleLogin(e) {
+        e.preventDefault();
+        
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+
+        try {
+            await api.login(email, password);
+            await this.loadUserData();
+            this.currentPage = 'dashboard';
+            this.loadDashboard();
+            this.render();
+        } catch (error) {
+            alert('Erro no login: ' + error.message);
+        }
+    }
+
+    async handleRegister(e) {
+        e.preventDefault();
+        
+        const name = document.getElementById('register-name').value;
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+        const objective = document.getElementById('register-objective').value;
+        const level = document.getElementById('register-level').value;
+
+        try {
+            await api.register(name, email, password, objective, level);
+            await api.createPlan(); // Criar plano automático
+            await this.loadUserData();
+            this.currentPage = 'dashboard';
+            this.loadDashboard();
+            this.render();
+        } catch (error) {
+            alert('Erro no registro: ' + error.message);
+        }
+    }
+
+    async handleProgressSubmit(e) {
+        e.preventDefault();
+        
+        const weight = parseFloat(document.getElementById('weight-input').value);
+        const notes = document.getElementById('progress-notes').value;
+
+        try {
+            await api.logProgress(weight, {}, null, notes);
+            alert('Progresso registrado com sucesso!');
+            document.getElementById('progress-form').reset();
+            this.loadProgress();
+        } catch (error) {
+            alert('Erro ao registrar progresso: ' + error.message);
+        }
+    }
+
+    async handleProfileSubmit(e) {
+        e.preventDefault();
+        
+        const data = {
+            name: document.getElementById('profile-name').value,
+            age: parseInt(document.getElementById('profile-age').value),
+            objective: document.getElementById('profile-objective').value,
+            level: document.getElementById('profile-level').value
+        };
+
+        try {
+            await api.updateProfile(data);
+            await this.loadUserData();
+            alert('Perfil atualizado com sucesso!');
+            this.currentPage = 'dashboard';
+            this.render();
+        } catch (error) {
+            alert('Erro ao atualizar perfil: ' + error.message);
+        }
+    }
+
+    async handleFinishWorkout(e) {
+        e.preventDefault();
+        
+        if (!this.currentWorkoutId) {
+            alert('Erro: ID do treino não encontrado');
+            return;
+        }
+        
+        try {
+            const durationMinutes = Math.floor((new Date() - this.workoutStartTime) / 60000);
+            
+            await api.completeWorkout(this.currentWorkoutId, durationMinutes);
+            
+            alert('Treino finalizado! +50 pontos 🎉');
+            this.stopWorkoutTimer();
+            this.currentWorkoutId = null;
+            this.currentWorkout = null;
+            this.currentPage = 'dashboard';
+            this.render();
+            this.loadDashboard();
+        } catch (error) {
+            console.error('Erro ao finalizar treino:', error);
+            alert('Erro ao finalizar treino: ' + error.message);
+        }
+    }
+
+    // ==================== DATA LOADING ====================
+
+    async loadDashboard() {
+        try {
+            const stats = await api.getStats();
+            document.getElementById('points-display').textContent = stats.points;
+            document.getElementById('workouts-display').textContent = stats.workouts_completed;
+            document.getElementById('streak-display').textContent = stats.current_streak;
+            document.getElementById('medals-display').textContent = stats.medals;
+
+            const plans = await api.getPlans();
+            const plansContainer = document.getElementById('plans-container');
+            
+            if (plans.length === 0) {
+                plansContainer.innerHTML = '<button class="btn btn-primary" id="create-plan">Criar Plano de Treino</button>';
+                document.getElementById('create-plan')?.addEventListener('click', async () => {
+                    await api.createPlan();
+                    this.loadDashboard();
+                });
+            } else {
+                plansContainer.innerHTML = plans.map(plan => `
+                    <div class="plan-card">
+                        <h3>${plan.name}</h3>
+                        <p>${plan.description}</p>
+                        <button class="btn btn-secondary btn-full" data-plan-id="${plan.id}">Ver Detalhes</button>
+                    </div>
+                `).join('');
+
+                document.querySelectorAll('[data-plan-id]').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const planId = e.target.dataset.planId;
+                        this.currentPlan = await api.getPlanDetails(planId);
+                        this.showPlanDetails();
+                    });
+                });
+            }
+
+            const workouts = await api.getUserWorkouts();
+            const workoutsContainer = document.getElementById('workouts-container');
+            
+            if (workouts.length === 0) {
+                workoutsContainer.innerHTML = '<p>Nenhum treino registrado ainda.</p>';
+            } else {
+                workoutsContainer.innerHTML = workouts.slice(0, 5).map(w => `
+                    <div class="workout-card ${w.completed ? 'completed' : ''}">
+                        <div class="workout-date">${new Date(w.date).toLocaleDateString('pt-BR')}</div>
+                        <div class="workout-info">
+                            <span>${w.duration_minutes} min</span> | <span>${w.exercises_count} exercícios</span>
+                            ${w.completed ? '<span class="badge">✓ Completo</span>' : ''}
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Erro ao carregar dashboard:', error);
+        }
+    }
+
+    async loadProgress() {
+        try {
+            const history = await api.getProgressHistory();
+            const container = document.getElementById('history-container');
+            
+            if (history.length === 0) {
+                container.innerHTML = '<p>Nenhum registro de progresso ainda.</p>';
+            } else {
+                container.innerHTML = history.map(h => `
+                    <div class="progress-record">
+                        <div class="record-date">${new Date(h.date).toLocaleDateString('pt-BR')}</div>
+                        <div class="record-weight">${h.weight} kg</div>
+                        ${h.notes ? `<div class="record-notes">${h.notes}</div>` : ''}
+                    </div>
+                `).join('');
+            }
+
+            // Renderizar gráfico de peso
+            this.renderWeightChart(history);
+        } catch (error) {
+            console.error('Erro ao carregar progresso:', error);
+        }
+    }
+
+    async loadMedals() {
+        try {
+            const medals = await api.getMedals();
+            const container = document.getElementById('medals-container');
+            
+            if (medals.length === 0) {
+                container.innerHTML = '<p>Você ainda não conquistou nenhuma medalha. Comece a treinar!</p>';
+            } else {
+                container.innerHTML = medals.map(m => `
+                    <div class="medal-card medal-${m.icon}">
+                        <div class="medal-icon">🏅</div>
+                        <div class="medal-name">${m.name}</div>
+                        <div class="medal-description">${m.description}</div>
+                        <div class="medal-date">${new Date(m.earned_at).toLocaleDateString('pt-BR')}</div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('Erro ao carregar medalhas:', error);
+        }
+    }
+
+    showPlanDetails() {
+        const weeks = this.currentPlan.weeks || [];
+        let html = `<div class="plan-details"><h3>${this.currentPlan.name}</h3>`;
+        
+        weeks.forEach(week => {
+            html += `<div class="week"><h4>Semana ${week.number}</h4>`;
+            
+            week.sessions.forEach(session => {
+                html += `
+                    <div class="session">
+                        <h5>${session.name}</h5>
+                        <button class="btn btn-primary" data-session-id="${session.id}">Iniciar Treino</button>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+        });
+        
+        html += '</div>';
+        
+        const container = document.getElementById('plans-container');
+        container.innerHTML = html;
+
+        document.querySelectorAll('[data-session-id]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const sessionId = e.target.dataset.sessionId;
+                await this.startWorkout(sessionId);
+            });
+        });
+    }
+
+    async startWorkout(sessionId) {
+        try {
+            // Encontrar a sessão nos dados
+            const week = this.currentPlan.weeks[0];
+            const session = week.sessions.find(s => s.id == sessionId);
+            
+            if (session) {
+                // Criar novo workout na API
+                const workoutData = await api.createWorkout(sessionId);
+                this.currentWorkoutId = workoutData.workout_id;
+                
+                this.currentWorkout = session;
+                this.currentPage = 'workout';
+                this.workoutStartTime = new Date();
+                this.startWorkoutTimer();
+                this.render();
+                this.renderWorkoutExercises();
+            }
+        } catch (error) {
+            console.error('Erro ao iniciar treino:', error);
+            alert('Erro ao iniciar treino: ' + error.message);
+        }
+    }
+
+    renderWorkoutExercises() {
+        const container = document.getElementById('exercises-container');
+        if (!this.currentWorkout || !this.currentWorkout.exercises) return;
+
+        container.innerHTML = this.currentWorkout.exercises.map((exc, idx) => `
+            <div class="exercise-card">
+                <div class="exercise-header">
+                    <h3>${exc.name}</h3>
+                    <span class="exercise-number">${idx + 1}/${this.currentWorkout.exercises.length}</span>
+                </div>
+                
+                <div class="exercise-info">
+                    <span>${exc.sets} séries x ${exc.reps} reps</span>
+                    <span>${exc.rest_seconds}s descanso</span>
+                </div>
+                
+                <div class="exercise-input">
+                    <input type="number" placeholder="Série 1 (reps)" class="exercise-reps" data-exercise-id="${exc.id}">
+                    <input type="number" placeholder="Peso (kg)" class="exercise-weight" data-exercise-id="${exc.id}">
+                </div>
+                
+                <button class="btn btn-success" data-exercise-idx="${idx}" data-exercise-id="${exc.id}">Completo ✓</button>
+            </div>
+        `).join('');
+
+        document.querySelectorAll('.btn-success').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const exerciseId = e.target.dataset.exerciseId;
+                const exerciseIdx = parseInt(e.target.dataset.exerciseIdx);
+                const card = e.target.parentElement;
+                const reps = card.querySelector('.exercise-reps').value;
+                const weight = card.querySelector('.exercise-weight').value;
+                
+                try {
+                    if (this.currentWorkoutId && exerciseId && weight && reps) {
+                        await api.logExercise(
+                            this.currentWorkoutId,
+                            exerciseId,
+                            1,
+                            reps,
+                            weight,
+                            'normal'
+                        );
+                        
+                        e.target.parentElement.style.opacity = '0.6';
+                        e.target.disabled = true;
+                        e.target.textContent = 'Completado ✓';
+                    } else {
+                        alert('Preencha todos os campos (reps e peso)');
+                    }
+                } catch (error) {
+                    console.error('Erro ao registrar exercício:', error);
+                    alert('Erro ao registrar exercício: ' + error.message);
+                }
+            });
+        });
+    }
+
+    startWorkoutTimer() {
+        this.workoutTimer = setInterval(() => {
+            const elapsed = Math.floor((new Date() - this.workoutStartTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            const timerEl = document.getElementById('workout-timer');
+            if (timerEl) {
+                timerEl.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+        }, 1000);
+    }
+
+    stopWorkoutTimer() {
+        if (this.workoutTimer) {
+            clearInterval(this.workoutTimer);
+            this.workoutTimer = null;
+        }
+    }
+
+    renderWeightChart(history) {
+        const canvas = document.getElementById('weight-chart');
+        if (!canvas || history.length === 0) return;
+
+        const ctx = canvas.getContext('2d');
+        const data = {
+            labels: history.map(h => new Date(h.date).toLocaleDateString('pt-BR')),
+            datasets: [{
+                label: 'Peso (kg)',
+                data: history.map(h => h.weight),
+                borderColor: '#4CAF50',
+                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        };
+
+        new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: true }
+                },
+                scales: {
+                    y: { beginAtZero: false }
+                }
+            }
+        });
+    }
+
+    logout() {
+        api.logout();
+        this.currentUser = null;
+        this.currentPage = 'login';
+        this.render();
+    }
 }
 
-// ==================== GAMIFICATION ====================
-
-// Carregar stats de gamificação
-async function loadGamificationStats(userId) {
-  try {
-    const stats = await api.getGamificationStats(userId);
-
-    // Atualizar estatísticas
-    const pointsEl = document.getElementById("points");
-    if (pointsEl) pointsEl.textContent = stats.points.toLocaleString("pt-BR");
-
-    const medalsCountEl = document.getElementById("medals-count");
-    if (medalsCountEl) medalsCountEl.textContent = stats.total_medals;
-
-    const workoutsEl = document.getElementById("workouts-count");
-    if (workoutsEl) workoutsEl.textContent = stats.total_workouts;
-
-    // Atualizar level
-    const levelEl = document.getElementById("user-level");
-    if (levelEl) levelEl.textContent = stats.level;
-
-    // Atualizar progress bar
-    const progressBar = document.getElementById("level-progress");
-    if (progressBar) {
-      progressBar.style.width = stats.progress_to_next_level + "%";
-    }
-
-    const levelPoints = document.getElementById("level-points");
-    if (levelPoints) {
-      const nextLevelPoints = stats.level * 500;
-      levelPoints.textContent = `${stats.points} / ${nextLevelPoints} pontos`;
-    }
-
-    // Renderizar medalhas
-    renderMedals(stats.medals);
-
-    console.log("✅ Gamificação carregada:", stats);
-    return stats;
-  } catch (error) {
-    console.error("❌ Erro ao carregar gamificação:", error);
-  }
-}
-
-// Renderizar medalhas
-function renderMedals(medals) {
-  const container = document.getElementById("medals-container");
-  if (!container) return;
-
-  if (!medals || medals.length === 0) {
-    container.innerHTML =
-      '<p style="grid-column: 1/-1; text-align: center; color: #6b7280;">Complete treinos para ganhar medalhas! 🎯</p>';
-    return;
-  }
-
-  const medalIcons = {
-    bronze: "🥉",
-    silver: "🥈",
-    gold: "🥇",
-  };
-
-  const html = medals
-    .map(
-      (m) => `
-        <div class="medal-item" title="${m.description}">
-            <div class="medal-icon">${medalIcons[m.icon] || "🏅"}</div>
-            <h4>${m.name}</h4>
-            <p>${m.description}</p>
-            <small>${new Date(m.earned_at).toLocaleDateString("pt-BR")}</small>
-        </div>
-    `
-    )
-    .join("");
-
-  container.innerHTML = html;
-}
-
-// Atualizar dados do usuário
-async function loadUserData() {
-  if (!appState.userId) {
-    console.warn("Nenhum userId definido");
-    return;
-  }
-
-  try {
-    console.log("📊 Carregando dados do usuário:", appState.userId);
-
-    // Atualizar streak
-    const streakEl = document.getElementById("streak");
-    if (streakEl) streakEl.textContent = stats.streak + " dias";
-
-    // Carregar gamificação
-    await loadGamificationStats(appState.userId);
-
-    // Carregar gráficos (se existir função)
-    if (typeof updateAllCharts === "function") {
-      await updateAllCharts(appState.userId);
-    }
-  } catch (error) {
-    console.error("❌ Erro ao carregar dados:", error);
-  }
-}
-
-// Chamar ao inicializar
-document.addEventListener("DOMContentLoaded", () => {
-  console.log("🎯 Inicializando...");
-
-  // Se já tem userId logado, carregar dados
-  if (appState && appState.userId) {
-    loadUserData();
-  }
+// Inicializar app quando DOM estiver pronto
+document.addEventListener('DOMContentLoaded', () => {
+    window.app = new EvoluaApp();
 });
